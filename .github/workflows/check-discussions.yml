@@ -1,0 +1,102 @@
+name: Check Discussions
+
+on:
+  schedule:
+    - cron: '0 10 * * MON'  # 매주 월요일 오전 10시에 실행
+  workflow_dispatch:  # 수동 실행 허용
+
+jobs:
+  check-discussions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests tabulate
+
+      - name: Check Discussions
+        env:
+          GITHUB_TOKEN: ${{ secrets.USER_TOKEN }}  # Personal Access Token 사용
+          GITHUB_REPO: BDD-CLUB/2025-winter-ps-study
+          DISCUSSION_CATEGORY_NAME: Report  # 카테고리 이름 설정
+        run: |
+          python <<EOF
+          import requests
+          from datetime import datetime, timedelta
+          from collections import defaultdict
+          from tabulate import tabulate
+
+          GITHUB_TOKEN = "${{ secrets.USER_TOKEN }}"
+          REPO = "${{ env.GITHUB_REPO }}"
+          CATEGORY_NAME = "${{ env.DISCUSSION_CATEGORY_NAME }}"
+          headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Content-Type": "application/json"}
+          week_ago = datetime.utcnow() - timedelta(days=7)
+
+          members = {
+              "amm0124": "김건호",
+              "pykido": "김태윤",
+              "yeonddori": "이서연",
+              "stopmin": "정지민"
+          }
+          member_counts = defaultdict(int)
+
+          # Fetch discussion categories to get the category ID for 'Report'
+          categories_url = f"https://api.github.com/repos/{REPO}/discussion-categories"
+          categories_response = requests.get(categories_url, headers=headers)
+          categories = categories_response.json()
+
+          # Find the category ID for 'Report'
+          category_id = None
+          for category in categories:
+              if category["name"] == CATEGORY_NAME:
+                  category_id = category["id"]
+                  break
+
+          if not category_id:
+              print(f"❌ Category '{CATEGORY_NAME}' not found!")
+              exit(1)
+
+          # Fetch discussions via REST API
+          url = f"https://api.github.com/repos/{REPO}/discussions"
+          response = requests.get(url, headers=headers)
+          discussions = response.json()
+
+          for d in discussions:
+              created_at = datetime.strptime(d['created_at'], "%Y-%m-%dT%H:%M:%SZ")
+              if created_at > week_ago:
+                  author = d['user']['login']
+                  if author in members:
+                      member_counts[members[author]] += 1
+
+          # Create a summary table
+          table = [["Member", "Discussion Count"]]
+          for member, name in members.items():
+              table.append([name, member_counts[name]])
+
+          result_table = tabulate(table, headers="firstrow", tablefmt="github")
+          print(result_table)
+
+          # Post the result using REST API
+          discussion_url = f"https://api.github.com/repos/{REPO}/discussions"
+          data = {
+              "title": "이번 주 멤버별 Discussion 활동 결과",
+              "body": f"### 이번 주 활동 결과\n\n{result_table}\n\n최소 3개의 글을 올려야 합니다!",
+              "category_id": category_id
+          }
+          post_response = requests.post(discussion_url, json=data, headers=headers)
+          
+          if post_response.status_code == 201:
+              print("✅ Discussion에 결과를 성공적으로 올렸습니다.")
+          else:
+              print(f"❌ Discussion 업로드 실패: {post_response.status_code}, {post_response.text}")
+              exit(1)
+          EOF
