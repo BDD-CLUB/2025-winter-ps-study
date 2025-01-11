@@ -49,27 +49,6 @@ jobs:
           }
           member_counts = defaultdict(int)
 
-          # Fetch discussion categories to get the category ID for 'Report'
-          categories_url = f"https://api.github.com/repos/{REPO}/discussion-categories"
-          categories_response = requests.get(categories_url, headers=headers)
-
-          if categories_response.status_code != 200:
-              print(f"❌ Failed to fetch categories: {categories_response.status_code}, {categories_response.text}")
-              exit(1)
-
-          categories = categories_response.json()
-
-          # Find the category ID for 'Report'
-          category_id = None
-          for category in categories:
-              if category["name"] == CATEGORY_NAME:
-                  category_id = category["id"]
-                  break
-
-          if not category_id:
-              print(f"❌ Category '{CATEGORY_NAME}' not found!")
-              exit(1)
-
           # Fetch discussions via REST API
           url = f"https://api.github.com/repos/{REPO}/discussions"
           response = requests.get(url, headers=headers)
@@ -101,7 +80,7 @@ jobs:
           data = {
               "title": "이번 주 멤버별 Discussion 활동 결과",
               "body": f"### 이번 주 활동 결과\n\n{result_table}\n\n최소 3개의 글을 올려야 합니다!",
-              "category_id": category_id
+              "category": CATEGORY_NAME  # 카테고리 이름을 그대로 사용
           }
           post_response = requests.post(discussion_url, json=data, headers=headers)
 
