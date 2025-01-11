@@ -52,6 +52,11 @@ jobs:
           # Fetch discussion categories to get the category ID for 'Report'
           categories_url = f"https://api.github.com/repos/{REPO}/discussion-categories"
           categories_response = requests.get(categories_url, headers=headers)
+
+          if categories_response.status_code != 200:
+              print(f"❌ Failed to fetch categories: {categories_response.status_code}, {categories_response.text}")
+              exit(1)
+
           categories = categories_response.json()
 
           # Find the category ID for 'Report'
@@ -68,8 +73,14 @@ jobs:
           # Fetch discussions via REST API
           url = f"https://api.github.com/repos/{REPO}/discussions"
           response = requests.get(url, headers=headers)
+
+          if response.status_code != 200:
+              print(f"❌ Failed to fetch discussions: {response.status_code}, {response.text}")
+              exit(1)
+
           discussions = response.json()
 
+          # Count discussions for each member
           for d in discussions:
               created_at = datetime.strptime(d['created_at'], "%Y-%m-%dT%H:%M:%SZ")
               if created_at > week_ago:
@@ -93,7 +104,7 @@ jobs:
               "category_id": category_id
           }
           post_response = requests.post(discussion_url, json=data, headers=headers)
-          
+
           if post_response.status_code == 201:
               print("✅ Discussion에 결과를 성공적으로 올렸습니다.")
           else:
