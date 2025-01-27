@@ -31,7 +31,7 @@ async function repo() {
 function filterThisWeekDiscussion(repository, last_week, now) {
   return repository.discussions.edges.filter((edge) => {
     const createdAt = moment(edge.node.createdAt);
-    return createdAt.isBetween(last_week, now, null, "[)") && edge.node.category.name !== "report" && edge.node.category.name !== "announcements";
+    return createdAt.isBetween(last_week, now, null, "[)") && edge.node.category.name !== "Report" && edge.node.category.name !== "Announcements";
   });
 }
 

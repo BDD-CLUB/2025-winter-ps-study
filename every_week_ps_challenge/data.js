@@ -5,4 +5,4 @@ exports.members = {
   stopmin: "정지민",
 };
 
-exports.activeMembers = [];
+exports.activeMembers = ["amm0124", "pykido", "yeonddori", "stopmin"];
