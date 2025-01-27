@@ -40,7 +40,7 @@ async function makeTitle(last_week, now) {
   const notificationCount = repository.discussions.totalCount;
   const yesterday = now.clone().subtract(1, "d");
 
-  return `비글챌 ${notificationCount + 1}회차 통계(${last_week.format("MM월 DD일")} ~ ${yesterday.format("MM월 DD일")})`;
+  return ` $겨울 알고리즘 챌린지{notificationCount + 1}회차 통계(${last_week.format("MM월 DD일")} ~ ${yesterday.format("MM월 DD일")})`;
 }
 
 function makeResult(filteredDiscussions) {
