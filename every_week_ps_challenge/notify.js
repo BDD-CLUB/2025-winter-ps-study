@@ -12,7 +12,7 @@ async function repo() {
 
   const resultTitle = await makeTitle(last_week, now);
 
-  const filteredDiscussions = filterThisWeekDiscussion(repository, last_week);
+  const filteredDiscussions = filterThisWeekDiscussion(repository, last_week, now);
   const thisWeekDiscussionCount = filteredDiscussions.length;
 
   const result = makeResult(filteredDiscussions);
@@ -24,14 +24,14 @@ async function repo() {
       console.log("통계가 성공적으로 업로드되었습니다.");
     })
     .catch((e) => {
-      console.log("문제가 발생했습니다.");
+      console.error("문제가 발생했습니다:", e.message);
     });
-  return { repository, viewer };
 }
 
-function filterThisWeekDiscussion(repository, last_week) {
+function filterThisWeekDiscussion(repository, last_week, now) {
   return repository.discussions.edges.filter((edge) => {
-    return moment(edge.node.createdAt) > last_week && edge.node.category.name !== "report" && edge.node.category.name !== "announcements";
+    const createdAt = moment(edge.node.createdAt);
+    return createdAt.isBetween(last_week, now, null, "[)") && edge.node.category.name !== "report" && edge.node.category.name !== "announcements";
   });
 }
 
@@ -40,29 +40,42 @@ async function makeTitle(last_week, now) {
   const notificationCount = repository.discussions.totalCount;
   const yesterday = now.clone().subtract(1, "d");
 
-  return ` $겨울 알고리즘 챌린지{notificationCount + 1}회차 통계(${last_week.format("MM월 DD일")} ~ ${yesterday.format("MM월 DD일")})`;
+  return `겨울 알고리즘 챌린지 ${notificationCount + 1}회차 통계(${last_week.format("MM월 DD일")} ~ ${yesterday.format("MM월 DD일")})`;
 }
 
 function makeResult(filteredDiscussions) {
   let result = {};
   Object.keys(members)
-    .filter((member) => activeMembers.find((activeMember) => activeMember === member))
-    .map((member) => {
+    .filter((member) => activeMembers.includes(member))
+    .forEach((member) => {
       result[members[member]] = 0;
     });
-  filteredDiscussions.map((edge) => {
-    result[members[edge.node.author.login]]++;
+
+  filteredDiscussions.forEach((edge) => {
+    const author = members[edge.node.author.login];
+    if (author) {
+      result[author]++;
+    }
   });
+
   return result;
 }
 
 function makeContent(thisWeekDiscussionCount, sortedResult, now) {
   let resultText = "";
-  sortedResult.map(([name, count]) => {
-    resultText += `| ${name} | ${count} | \n  `;
+  sortedResult.forEach(([name, count]) => {
+    resultText += `| ${name} | ${count || 0} | \n  `;
   });
-  const topMembers = sortedResult.filter(([_, count]) => count === sortedResult[0][1]).map(([name]) => name);
-  const bottomMembers = sortedResult.filter(([_, count]) => count === sortedResult[sortedResult.length - 1][1]).map(([name]) => name);
+
+  const maxCount = sortedResult[0][1];
+  const minCount = sortedResult[sortedResult.length - 1][1];
+
+  const topMembers = sortedResult.filter(([_, count]) => count === maxCount && count > 0).map(([name]) => name);
+  const bottomMembers = sortedResult.filter(([_, count]) => count === minCount && count > 0).map(([name]) => name);
+
+  const topText = topMembers.length ? `🏆 이번 주 알고리즘 최강자: ${topMembers.join(", ")} 👑` : `🥱 이번 주에는 최강자가 없네요. 다음 주를 기대해요! ✨`;
+
+  const bottomText = bottomMembers.length ? `🥺 이번 주 꼴찌: ${bottomMembers.join(", ")} 🔫` : `🎉 이번 주에는 모두가 잘했어요! 🥳`;
 
   return `
   ## 🥳 지난 주 챌린지 수행 결과: 총 ${thisWeekDiscussionCount}개 글 작성
@@ -73,9 +86,9 @@ function makeContent(thisWeekDiscussionCount, sortedResult, now) {
   | -------- | ---------- |
   ${resultText}
   
-  ### 🏆 이번 주 알고리즘 최강자: ${topMembers.join(", ")} 👑
+  ${topText}
   
-  ### 🥺 이번 주 꼴찌: ${bottomMembers.join(", ")} 🔫
+  ${bottomText}
   
   다음 주엔 다들 더 화이팅이에요! 🌟
   `;
