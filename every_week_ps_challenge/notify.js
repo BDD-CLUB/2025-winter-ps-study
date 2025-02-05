@@ -71,7 +71,7 @@ function makeContent(thisWeekDiscussionCount, sortedResult, now) {
   const minCount = sortedResult[sortedResult.length - 1][1];
 
   const topMembers = sortedResult.filter(([_, count]) => count === maxCount && count > 0).map(([name]) => name);
-  const bottomMembers = sortedResult.filter(([_, count]) => count === minCount && count > 0).map(([name]) => name);
+  const bottomMembers = sortedResult.filter(([_, count]) => count === minCount && count >= 0).map(([name]) => name);
 
   const topText = topMembers.length ? `🏆 이번 주 알고리즘 최강자: ${topMembers.join(", ")} 👑` : `🥱 이번 주에는 최강자가 없네요. 다음 주를 기대해요! ✨`;
 
